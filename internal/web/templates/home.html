@@ -1,0 +1,14 @@
+{{define "content"}}
+<section class="hero">
+  <h1>chtiwt</h1>
+  <p class="muted">A tiny streaming + chat platform. Live channels will appear here once the ingest is online.</p>
+  {{if not .User}}
+    <p>
+      <a class="btn" href="/signup">Create an account</a>
+      <a class="btn-secondary" href="/login">Log in</a>
+    </p>
+  {{else}}
+    <p><a class="btn" href="/dashboard">Go to your dashboard</a></p>
+  {{end}}
+</section>
+{{end}}

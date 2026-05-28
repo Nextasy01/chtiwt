@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS stream_sessions;
+DROP TABLE IF EXISTS sessions;
+DROP TABLE IF EXISTS channels;
+DROP TABLE IF EXISTS users;

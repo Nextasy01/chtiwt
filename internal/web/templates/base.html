@@ -1,0 +1,150 @@
+{{define "base"}}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>chtiwt</title>
+  <style>
+    :root {
+      --bg: #0e0e10;
+      --panel: #18181b;
+      --panel-soft: #1f1f23;
+      --border: #2a2a2e;
+      --text: #efeff1;
+      --muted: #adadb8;
+      --accent: #9146ff;
+      --accent-hover: #a970ff;
+      --danger: #eb0400;
+      --error-bg: #3b1418;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.5;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { color: var(--accent-hover); }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1.25rem;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+    }
+    .brand { font-weight: 700; font-size: 1.25rem; color: var(--text); }
+    .topbar nav { display: flex; align-items: center; gap: 1rem; }
+    .topbar nav .me { color: var(--muted); }
+    main { max-width: 720px; margin: 0 auto; padding: 2rem 1.25rem; }
+    h1 { margin-top: 0; }
+    h2 { margin-top: 2rem; }
+    .muted { color: var(--muted); }
+    .error {
+      background: var(--error-bg);
+      border: 1px solid var(--danger);
+      color: var(--text);
+      padding: 0.5rem 0.75rem;
+      border-radius: 4px;
+    }
+    button, .btn {
+      background: var(--accent);
+      color: var(--text);
+      border: none;
+      border-radius: 4px;
+      padding: 0.55rem 1rem;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-block;
+    }
+    button:hover, .btn:hover { background: var(--accent-hover); color: var(--text); }
+    button.danger { background: var(--danger); }
+    .btn-secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 0.55rem 1rem;
+      border-radius: 4px;
+      margin-left: 0.5rem;
+    }
+    .inline-form { display: inline; }
+    .form-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1.5rem;
+      max-width: 420px;
+      margin: 0 auto;
+    }
+    .form-card label {
+      display: block;
+      margin: 0.75rem 0;
+    }
+    .form-card input {
+      display: block;
+      width: 100%;
+      margin-top: 0.25rem;
+      padding: 0.5rem 0.75rem;
+      background: var(--panel-soft);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+    .form-card button { width: 100%; margin-top: 0.5rem; }
+    .title-form { display: flex; gap: 0.5rem; }
+    .title-form input {
+      flex: 1;
+      padding: 0.5rem 0.75rem;
+      background: var(--panel-soft);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+    }
+    dl.meta { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; }
+    dl.meta dt { color: var(--muted); }
+    dl.meta dd { margin: 0; }
+    code, pre {
+      font-family: "SF Mono", Menlo, Consolas, monospace;
+      background: var(--panel-soft);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.25rem 0.5rem;
+    }
+    pre.key {
+      padding: 1rem;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      font-size: 1rem;
+    }
+    .hero { text-align: center; padding: 3rem 0; }
+    .hero h1 { font-size: 3rem; margin-bottom: 0.5rem; }
+    .key-shown { text-align: center; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a href="/" class="brand">chtiwt</a>
+    <nav>
+      {{if .User}}
+        <span class="me">@{{.User.Username}}</span>
+        <a href="/dashboard">dashboard</a>
+        <form method="POST" action="/logout" class="inline-form">
+          <button type="submit" class="btn-secondary">log out</button>
+        </form>
+      {{else}}
+        <a href="/login">log in</a>
+        <a href="/signup">sign up</a>
+      {{end}}
+    </nav>
+  </header>
+  <main>
+    {{template "content" .}}
+  </main>
+</body>
+</html>
+{{end}}

@@ -1,0 +1,31 @@
+{{define "content"}}
+{{with .Data}}
+<section class="dashboard">
+  <h1>Your channel</h1>
+  <dl class="meta">
+    <dt>Name</dt><dd>{{.Channel.Name}}</dd>
+    <dt>Created</dt><dd>{{.Channel.CreatedAt.Time.Format "Jan 2, 2006"}}</dd>
+  </dl>
+
+  <h2>Title</h2>
+  <form method="POST" action="/dashboard/title" class="title-form">
+    <input name="title" value="{{.Channel.Title}}" maxlength="200" placeholder="what are you streaming?">
+    <button type="submit">Update</button>
+  </form>
+
+  <h2>Stream key</h2>
+  <p class="muted">Stored hashed — we can't show your current key. Regenerating produces a new key (shown once) and invalidates the old one.</p>
+  <form method="POST" action="/dashboard/regenerate" class="inline-form">
+    <button type="submit" class="danger">Regenerate stream key</button>
+  </form>
+
+  <h2>Ingest endpoint</h2>
+  <p>In OBS: <em>Settings → Stream → Custom</em>.</p>
+  <dl class="meta">
+    <dt>Server</dt><dd><code>rtmp://localhost:1935/live</code></dd>
+    <dt>Stream Key</dt><dd><span class="muted">(paste the value you copied after regeneration)</span></dd>
+  </dl>
+  <p class="muted">The ingest server itself is not yet running — that arrives in Phase 2.</p>
+</section>
+{{end}}
+{{end}}

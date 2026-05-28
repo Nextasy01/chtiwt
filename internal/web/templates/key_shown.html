@@ -1,0 +1,10 @@
+{{define "content"}}
+{{with .Data}}
+<section class="key-shown">
+  <h1>{{.Heading}}</h1>
+  <p class="muted">{{.Lead}}</p>
+  <pre class="key">{{.Plain}}</pre>
+  <p><a class="btn" href="{{.CTAHref}}">{{.CTA}}</a></p>
+</section>
+{{end}}
+{{end}}

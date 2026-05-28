@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: chtiwt-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: chtiwt
+      POSTGRES_PASSWORD: chtiwt
+      POSTGRES_DB: chtiwt
+    ports:
+      - "5432:5432"
+    volumes:
+      - chtiwt-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chtiwt -d chtiwt"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  chtiwt-pgdata:

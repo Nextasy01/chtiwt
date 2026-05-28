@@ -1,0 +1,21 @@
+{{define "content"}}
+<section class="form-card">
+  <h1>Sign up</h1>
+  {{with .Data}}
+    {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
+    <form method="POST" action="/signup">
+      <label>Username
+        <input name="username" value="{{.Username}}" required minlength="3" maxlength="32" pattern="[a-zA-Z0-9_]+" autocomplete="username">
+      </label>
+      <label>Email
+        <input name="email" type="email" value="{{.Email}}" required autocomplete="email">
+      </label>
+      <label>Password
+        <input name="password" type="password" required minlength="8" maxlength="72" autocomplete="new-password">
+      </label>
+      <button type="submit">Create account</button>
+    </form>
+  {{end}}
+  <p class="muted" style="margin-top:1rem;text-align:center">Already have an account? <a href="/login">Log in</a></p>
+</section>
+{{end}}
