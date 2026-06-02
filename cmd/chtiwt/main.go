@@ -14,6 +14,7 @@ import (
 	"github.com/Nextasy01/chtiwt/internal/auth"
 	"github.com/Nextasy01/chtiwt/internal/config"
 	"github.com/Nextasy01/chtiwt/internal/store"
+	"github.com/Nextasy01/chtiwt/internal/stream"
 	"github.com/Nextasy01/chtiwt/internal/web"
 )
 
@@ -47,13 +48,23 @@ func run() error {
 		slog.Warn("session sweep on boot failed", "err", err)
 	}
 
+	streamSvc := stream.NewService(stream.Options{
+		Pool:       db.Pool,
+		RTMPAddr:   cfg.RTMPAddr,
+		StateDir:   cfg.StateDir,
+		FFmpegPath: cfg.FFmpegPath,
+	})
+	if err := streamSvc.RecoverOnBoot(ctx); err != nil {
+		return fmt.Errorf("stream recover: %w", err)
+	}
+
 	tmpl, err := web.LoadTemplates()
 	if err != nil {
 		return fmt.Errorf("load templates: %w", err)
 	}
 
 	authHandlers := auth.NewHandlers(authSvc, tmpl, cfg.SecureCookies)
-	webSrv := web.NewServer(authSvc, tmpl)
+	webSrv := web.NewServer(authSvc, streamSvc, cfg.StateDir, tmpl)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -75,23 +86,34 @@ func run() error {
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
-	serverErr := make(chan error, 1)
+	httpErr := make(chan error, 1)
 	go func() {
 		slog.Info("http listening", "addr", cfg.HTTPAddr)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			serverErr <- err
+			httpErr <- err
 		}
-		close(serverErr)
+		close(httpErr)
+	}()
+
+	rtmpErr := make(chan error, 1)
+	go func() {
+		if err := streamSvc.ListenAndServeRTMP(ctx); err != nil {
+			rtmpErr <- err
+		}
+		close(rtmpErr)
 	}()
 
 	select {
 	case <-ctx.Done():
 		slog.Info("shutdown signal received")
-	case err, ok := <-serverErr:
+	case err, ok := <-httpErr:
 		if ok && err != nil {
 			return fmt.Errorf("http server: %w", err)
 		}
-		return nil
+	case err, ok := <-rtmpErr:
+		if ok && err != nil {
+			return fmt.Errorf("rtmp server: %w", err)
+		}
 	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -99,6 +121,7 @@ func run() error {
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		return fmt.Errorf("http shutdown: %w", err)
 	}
+	streamSvc.ShutdownLive()
 	slog.Info("shutdown complete")
 	return nil
 }

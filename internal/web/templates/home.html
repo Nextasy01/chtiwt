@@ -1,7 +1,7 @@
 {{define "content"}}
 <section class="hero">
   <h1>chtiwt</h1>
-  <p class="muted">A tiny streaming + chat platform. Live channels will appear here once the ingest is online.</p>
+  <p class="muted">A tiny streaming + chat platform.</p>
   {{if not .User}}
     <p>
       <a class="btn" href="/signup">Create an account</a>
@@ -11,4 +11,27 @@
     <p><a class="btn" href="/dashboard">Go to your dashboard</a></p>
   {{end}}
 </section>
+
+{{with .Data}}
+<section class="live-list">
+  <h2>Live now</h2>
+  {{if .Live}}
+    <ul class="cards">
+      {{range .Live}}
+        <li class="card">
+          <a href="/c/{{.ChannelName}}">
+            <div class="card-thumb"><span class="live-badge">LIVE</span></div>
+            <div class="card-body">
+              <div class="card-channel">{{.ChannelName}}</div>
+              <div class="card-title muted">{{if .Title}}{{.Title}}{{else}}(no title){{end}}</div>
+            </div>
+          </a>
+        </li>
+      {{end}}
+    </ul>
+  {{else}}
+    <p class="muted">Nobody is streaming right now. Sign up, grab a stream key, and point OBS at the ingest.</p>
+  {{end}}
+</section>
+{{end}}
 {{end}}

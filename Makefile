@@ -2,11 +2,14 @@
 # Required tooling (install once):
 #   go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 #   go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+#   ffmpeg on $PATH (any recent build, used as a subprocess for HLS muxing)
 # NOTE: the -tags 'postgres' is mandatory — migrate ships with no drivers by
 # default, so omitting it produces: "unknown driver postgres (forgotten import?)".
 
 POSTGRES_URL ?= postgres://chtiwt:chtiwt@localhost:5432/chtiwt?sslmode=disable
 HTTP_ADDR    ?= :8080
+RTMP_ADDR    ?= :1935
+STATE_DIR    ?= ./state
 
 .PHONY: up down logs migrate migrate-down generate run build test tidy
 
@@ -30,6 +33,8 @@ generate:
 
 run: export DATABASE_URL := $(POSTGRES_URL)
 run: export HTTP_ADDR    := $(HTTP_ADDR)
+run: export RTMP_ADDR    := $(RTMP_ADDR)
+run: export STATE_DIR    := $(STATE_DIR)
 run:
 	go run ./cmd/chtiwt
 

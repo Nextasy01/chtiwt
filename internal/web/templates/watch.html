@@ -1,0 +1,32 @@
+{{define "content"}}
+{{with .Data}}
+<section class="watch">
+  <h1>{{.ChannelName}}</h1>
+  {{if .Title}}<p class="muted">{{.Title}}</p>{{end}}
+
+  {{if .Live}}
+    <div class="player-wrap">
+      <video id="player" controls autoplay muted playsinline></video>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+    <script>
+      (function () {
+        var video = document.getElementById('player');
+        var src = '/hls/{{.ChannelName}}/index.m3u8';
+        if (window.Hls && Hls.isSupported()) {
+          var hls = new Hls({ lowLatencyMode: true });
+          hls.loadSource(src);
+          hls.attachMedia(video);
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+          video.src = src;
+        } else {
+          video.outerHTML = '<p class="error">Your browser cannot play HLS.</p>';
+        }
+      })();
+    </script>
+  {{else}}
+    <p class="muted">This channel is offline.</p>
+  {{end}}
+</section>
+{{end}}
+{{end}}
