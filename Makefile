@@ -1,10 +1,13 @@
 # chtiwt local dev targets.
-# Required tooling (install once):
-#   go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+#
+# Production deploys use `docker compose up` — the binary runs migrations on
+# boot via its embedded copy of internal/store/migrations/. The `migrate`
+# CLI is only needed for `make migrate-down` (rolling back during dev).
+#
+# Required tooling for dev:
 #   go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+#   go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest  # optional: only for migrate-down
 #   ffmpeg on $PATH (any recent build, used as a subprocess for HLS muxing)
-# NOTE: the -tags 'postgres' is mandatory — migrate ships with no drivers by
-# default, so omitting it produces: "unknown driver postgres (forgotten import?)".
 
 POSTGRES_URL ?= postgres://chtiwt:chtiwt@localhost:5432/chtiwt?sslmode=disable
 HTTP_ADDR    ?= :8080
@@ -23,10 +26,10 @@ logs:
 	docker compose logs -f postgres
 
 migrate:
-	migrate -path migrations -database "$(POSTGRES_URL)" up
+	migrate -path internal/store/migrations -database "$(POSTGRES_URL)" up
 
 migrate-down:
-	migrate -path migrations -database "$(POSTGRES_URL)" down 1
+	migrate -path internal/store/migrations -database "$(POSTGRES_URL)" down 1
 
 generate:
 	sqlc generate

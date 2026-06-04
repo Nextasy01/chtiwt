@@ -7,6 +7,8 @@ services:
       POSTGRES_USER: chtiwt
       POSTGRES_PASSWORD: chtiwt
       POSTGRES_DB: chtiwt
+    # Exposed on the host for local dev tooling (psql, sqlc, etc.). The
+    # chtiwt service uses the compose DNS name instead.
     ports:
       - "5432:5432"
     volumes:
@@ -17,5 +19,35 @@ services:
       timeout: 3s
       retries: 10
 
+  chtiwt:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: chtiwt
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://chtiwt:chtiwt@postgres:5432/chtiwt?sslmode=disable
+      HTTP_ADDR: ":8080"
+      RTMP_ADDR: ":1935"
+      STATE_DIR: /state
+    ports:
+      - "8080:8080"
+      - "1935:1935"
+    volumes:
+      # HLS playlists and segments. RecoverOnBoot wipes this on every
+      # start, so persistence is not strictly required — using a named
+      # volume just keeps the host filesystem clean.
+      - chtiwt-state:/state
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/healthz || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
 volumes:
   chtiwt-pgdata:
+  chtiwt-state:
