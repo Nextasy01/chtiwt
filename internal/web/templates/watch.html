@@ -8,17 +8,118 @@
 
       {{if .Live}}
         <div class="player-wrap">
+          <!-- `controls` is kept as a fallback: if Plyr fails to load
+               (CDN blocked, JS error), the browser's native controls
+               appear instead of a dead black box. Plyr removes the
+               attribute when it successfully takes over. -->
           <video id="player" controls autoplay muted playsinline></video>
         </div>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3/dist/plyr.css">
+        <script src="https://cdn.jsdelivr.net/npm/plyr@3/dist/plyr.polyfilled.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
         <script>
           (function () {
             var video = document.getElementById('player');
             var src = '/hls/{{.ChannelName}}/index.m3u8';
+
+            // Init Plyr FIRST, on the empty <video>. Doing this after
+            // hls.attachMedia causes Plyr's setup to call video.load(),
+            // which detaches the MediaSource and orphans the blob URL
+            // (the "blob: ERR_FILE_NOT_FOUND" symptom).
+            if (window.Plyr) {
+              new Plyr(video, {
+                controls: ['play-large', 'play', 'mute', 'volume', 'fullscreen'],
+                // Fullscreen the whole grid so chat stays visible — theater mode.
+                fullscreen: { enabled: true, fallback: true, iosNative: false, container: '.watch-grid' },
+                clickToPlay: true,
+                keyboard: { focused: true, global: false },
+                tooltips: { controls: true },
+              });
+            }
+
+            // Now attach the HLS source. Plyr is already wrapping the
+            // controls layer and won't interfere.
             if (window.Hls && Hls.isSupported()) {
-              var hls = new Hls({ lowLatencyMode: true });
+              var retryPolicy = {
+                maxNumRetry: 8,
+                retryDelayMs: 800,
+                maxRetryDelayMs: 4000,
+              };
+              var hls = new Hls({
+                // Sit closer to the live edge than hls.js's default (~6 s).
+                // 2 s = first usable segment; 6 s = if we fall this far
+                // behind for any reason, hls.js auto-seeks forward.
+                liveSyncDuration: 2,
+                liveMaxLatencyDuration: 6,
+                // lowLatencyMode would require #EXT-X-PART markers in the
+                // playlist (LL-HLS), which our ffmpeg output doesn't emit.
+                manifestLoadPolicy: {
+                  default: { maxLoadTimeMs: 20000, timeoutRetry: retryPolicy, errorRetry: retryPolicy },
+                },
+                playlistLoadPolicy: {
+                  default: { maxLoadTimeMs: 20000, timeoutRetry: retryPolicy, errorRetry: retryPolicy },
+                },
+                fragLoadPolicy: {
+                  default: { maxLoadTimeMs: 120000, timeoutRetry: retryPolicy, errorRetry: retryPolicy },
+                },
+              });
               hls.loadSource(src);
               hls.attachMedia(video);
+
+              // Twitch-style pause-then-resume: if the viewer is more
+              // than 4 s behind the live edge when they hit play (the
+              // typical "I paused, came back later" case), snap forward
+              // to live instead of trying to catch up frame by frame.
+              // A short threshold means we don't disturb the initial
+              // play (we're already near live) or a quick scrub-pause.
+              video.addEventListener('play', function () {
+                if (typeof hls.liveSyncPosition !== 'number') return;
+                var behind = hls.liveSyncPosition - video.currentTime;
+                if (behind > 4) {
+                  video.currentTime = hls.liveSyncPosition;
+                }
+              });
+
+              // Bounded recovery. The previous version called
+              // recoverMediaError() on every fatal media error, which
+              // turned a single decode failure into an infinite
+              // download-flush-redownload loop.
+              var mediaRecoveryAttempts = 0;
+              hls.on(Hls.Events.ERROR, function (_event, data) {
+                if (!data.fatal) return;
+                switch (data.type) {
+                  case Hls.ErrorTypes.NETWORK_ERROR:
+                    hls.startLoad();
+                    break;
+                  case Hls.ErrorTypes.MEDIA_ERROR:
+                    if (mediaRecoveryAttempts === 0) {
+                      mediaRecoveryAttempts++;
+                      hls.recoverMediaError();
+                    } else if (mediaRecoveryAttempts === 1) {
+                      mediaRecoveryAttempts++;
+                      hls.swapAudioCodec();
+                      hls.recoverMediaError();
+                    } else {
+                      console.warn('hls: gave up after repeated media errors');
+                      hls.destroy();
+                    }
+                    break;
+                  default:
+                    hls.destroy();
+                    break;
+                }
+              });
+
+              // Defeat the autoplay race: once we have a parsed
+              // manifest, explicitly request play. If the browser
+              // blocks it (no prior user gesture), Plyr's center
+              // play button takes over and the user clicks once.
+              hls.on(Hls.Events.MANIFEST_PARSED, function () {
+                var p = video.play();
+                if (p && typeof p.catch === 'function') {
+                  p.catch(function () { /* user gesture required */ });
+                }
+              });
             } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
               video.src = src;
             } else {

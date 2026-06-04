@@ -182,6 +182,13 @@
       aspect-ratio: 16 / 9;
     }
     .player-wrap video { width: 100%; height: 100%; display: block; }
+    /* Plyr overrides: match our dark theme + Twitch-y purple accent. */
+    .player-wrap .plyr { height: 100%; border-radius: inherit; }
+    :root {
+      --plyr-color-main: var(--accent);
+      --plyr-video-control-color: var(--text);
+      --plyr-video-background: #000;
+    }
     .player-wrap.offline {
       display: flex;
       align-items: center;
@@ -198,6 +205,38 @@
     @media (max-width: 800px) {
       .watch-grid { grid-template-columns: 1fr; }
       .chat-pane { height: 360px; }
+    }
+    /* Fullscreen layout: video on the left fills available space, chat
+       pinned to the right at fixed width and full height. The grid itself
+       fills the screen and ditches the page background padding. */
+    .watch-grid:fullscreen {
+      width: 100vw;
+      height: 100vh;
+      gap: 0;
+      padding: 0;
+      background: var(--bg);
+      grid-template-columns: 1fr 340px;
+      align-items: stretch;
+    }
+    .watch-grid:fullscreen .watch-main {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+    .watch-grid:fullscreen .watch-main h1,
+    .watch-grid:fullscreen .watch-main > p { display: none; }
+    .watch-grid:fullscreen .player-wrap {
+      margin: 0;
+      flex: 1;
+      aspect-ratio: auto;
+      border-radius: 0;
+    }
+    .watch-grid:fullscreen .chat-pane {
+      height: 100vh;
+      border-radius: 0;
+      border-top: none;
+      border-bottom: none;
+      border-right: none;
     }
     .chat-pane {
       display: flex;
