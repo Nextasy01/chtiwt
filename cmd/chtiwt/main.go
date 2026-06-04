@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Nextasy01/chtiwt/internal/auth"
+	"github.com/Nextasy01/chtiwt/internal/chat"
 	"github.com/Nextasy01/chtiwt/internal/config"
 	"github.com/Nextasy01/chtiwt/internal/store"
 	"github.com/Nextasy01/chtiwt/internal/stream"
@@ -58,13 +59,15 @@ func run() error {
 		return fmt.Errorf("stream recover: %w", err)
 	}
 
+	chatSvc := chat.NewService(chat.Options{})
+
 	tmpl, err := web.LoadTemplates()
 	if err != nil {
 		return fmt.Errorf("load templates: %w", err)
 	}
 
 	authHandlers := auth.NewHandlers(authSvc, tmpl, cfg.SecureCookies)
-	webSrv := web.NewServer(authSvc, streamSvc, cfg.StateDir, tmpl)
+	webSrv := web.NewServer(authSvc, streamSvc, chatSvc, cfg.StateDir, tmpl)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -122,6 +125,7 @@ func run() error {
 		return fmt.Errorf("http shutdown: %w", err)
 	}
 	streamSvc.ShutdownLive()
+	chatSvc.Shutdown()
 	slog.Info("shutdown complete")
 	return nil
 }

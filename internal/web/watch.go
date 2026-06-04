@@ -1,6 +1,11 @@
 package web
 
-import "net/http"
+import (
+	"errors"
+	"net/http"
+
+	"github.com/Nextasy01/chtiwt/internal/auth"
+)
 
 type watchData struct {
 	ChannelName string
@@ -15,8 +20,22 @@ func (s *Server) watch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := watchData{ChannelName: name}
-	if live, ok := s.live.GetByName(name); ok {
+	ch, err := s.svc.ChannelByName(r.Context(), name)
+	if err != nil {
+		if errors.Is(err, auth.ErrNoChannel) {
+			http.NotFound(w, r)
+			return
+		}
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	// Plant the anon cookie now so it's present on the subsequent
+	// WebSocket upgrade triggered by the page's JS.
+	ensureAnonCookie(w, r)
+
+	data := watchData{ChannelName: ch.Name, Title: ch.Title}
+	if live, ok := s.live.GetByName(ch.Name); ok {
 		data.Title = live.Title
 		data.Live = true
 	}

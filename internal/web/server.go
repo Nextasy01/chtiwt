@@ -15,15 +15,23 @@ type liveDirectory interface {
 	GetByName(name string) (stream.LiveChannel, bool)
 }
 
+// chatGateway is the narrow view of the chat package that web depends on.
+// username/userID are zero for unauthenticated viewers (read-only chat);
+// anonKey is a long-lived per-browser ID so guest viewers dedupe across tabs.
+type chatGateway interface {
+	ServeWS(w http.ResponseWriter, r *http.Request, channelName, username string, userID int64, anonKey string)
+}
+
 type Server struct {
 	svc      *auth.Service
 	live     liveDirectory
+	chat     chatGateway
 	stateDir string
 	tmpl     *Templates
 }
 
-func NewServer(svc *auth.Service, live liveDirectory, stateDir string, tmpl *Templates) *Server {
-	return &Server{svc: svc, live: live, stateDir: stateDir, tmpl: tmpl}
+func NewServer(svc *auth.Service, live liveDirectory, chat chatGateway, stateDir string, tmpl *Templates) *Server {
+	return &Server{svc: svc, live: live, chat: chat, stateDir: stateDir, tmpl: tmpl}
 }
 
 // Mount registers the web routes on mux. Routes that require a logged-in
@@ -32,6 +40,7 @@ func NewServer(svc *auth.Service, live liveDirectory, stateDir string, tmpl *Tem
 func (s *Server) Mount(mux *http.ServeMux) {
 	mux.HandleFunc("GET /", s.home)
 	mux.HandleFunc("GET /c/{channel}", s.watch)
+	mux.HandleFunc("GET /ws/chat/{channel}", s.chatWS)
 	mux.Handle("GET /hls/", s.hlsFileServer())
 	mux.Handle("GET /dashboard", auth.RequireAuth(http.HandlerFunc(s.dashboard)))
 	mux.Handle("POST /dashboard/title", auth.RequireAuth(http.HandlerFunc(s.updateTitle)))
@@ -48,4 +57,35 @@ func (s *Server) hlsFileServer() http.Handler {
 		w.Header().Set("Cache-Control", "no-store")
 		fs.ServeHTTP(w, r)
 	})
+}
+
+// chatWS dispatches WebSocket upgrades to the chat gateway. We verify the
+// channel exists first so random URLs can't create unbounded rooms. We
+// pull the authenticated user from the auth-middleware context (nil for guests).
+func (s *Server) chatWS(w http.ResponseWriter, r *http.Request) {
+	channel := r.PathValue("channel")
+	if channel == "" {
+		http.NotFound(w, r)
+		return
+	}
+	ch, err := s.svc.ChannelByName(r.Context(), channel)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	var (
+		username string
+		userID   int64
+		anonKey  string
+	)
+	if u, ok := auth.UserFromContext(r.Context()); ok && u != nil {
+		username = u.Username
+		userID = u.ID
+	} else {
+		// Read the cookie set by the watch page. If a client connects
+		// to the WS directly (no prior page load), we set one now —
+		// upgrade responses can still write headers before the switch.
+		anonKey = ensureAnonCookie(w, r)
+	}
+	s.chat.ServeWS(w, r, ch.Name, username, userID, anonKey)
 }

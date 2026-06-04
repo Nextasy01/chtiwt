@@ -150,6 +150,17 @@ func (s *Service) ChannelForUser(ctx context.Context, userID int64) (queries.Cha
 	return c, nil
 }
 
+func (s *Service) ChannelByName(ctx context.Context, name string) (queries.Channel, error) {
+	c, err := s.q.GetChannelByName(ctx, name)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return queries.Channel{}, ErrNoChannel
+		}
+		return queries.Channel{}, fmt.Errorf("lookup channel: %w", err)
+	}
+	return c, nil
+}
+
 func (s *Service) RegenerateStreamKey(ctx context.Context, channelID int64) (string, error) {
 	plain, hash, err := stream.GenerateKey()
 	if err != nil {

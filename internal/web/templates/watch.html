@@ -1,32 +1,113 @@
 {{define "content"}}
 {{with .Data}}
 <section class="watch">
-  <h1>{{.ChannelName}}</h1>
-  {{if .Title}}<p class="muted">{{.Title}}</p>{{end}}
+  <div class="watch-grid">
+    <div class="watch-main">
+      <h1>{{.ChannelName}}</h1>
+      {{if .Title}}<p class="muted">{{.Title}}</p>{{end}}
 
-  {{if .Live}}
-    <div class="player-wrap">
-      <video id="player" controls autoplay muted playsinline></video>
+      {{if .Live}}
+        <div class="player-wrap">
+          <video id="player" controls autoplay muted playsinline></video>
+        </div>
+        <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+        <script>
+          (function () {
+            var video = document.getElementById('player');
+            var src = '/hls/{{.ChannelName}}/index.m3u8';
+            if (window.Hls && Hls.isSupported()) {
+              var hls = new Hls({ lowLatencyMode: true });
+              hls.loadSource(src);
+              hls.attachMedia(video);
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+              video.src = src;
+            } else {
+              video.outerHTML = '<p class="error">Your browser cannot play HLS.</p>';
+            }
+          })();
+        </script>
+      {{else}}
+        <div class="player-wrap offline"><span class="muted">channel is offline</span></div>
+      {{end}}
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
-    <script>
-      (function () {
-        var video = document.getElementById('player');
-        var src = '/hls/{{.ChannelName}}/index.m3u8';
-        if (window.Hls && Hls.isSupported()) {
-          var hls = new Hls({ lowLatencyMode: true });
-          hls.loadSource(src);
-          hls.attachMedia(video);
-        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-          video.src = src;
-        } else {
-          video.outerHTML = '<p class="error">Your browser cannot play HLS.</p>';
-        }
-      })();
-    </script>
-  {{else}}
-    <p class="muted">This channel is offline.</p>
-  {{end}}
+
+    <aside class="chat-pane">
+      <header class="chat-header">
+        <span>chat</span>
+        <span id="viewer-count" class="viewer-count">viewers: 0</span>
+      </header>
+      <ul id="chat-log" class="chat-log"></ul>
+      <form id="chat-form" class="chat-form" {{if not $.User}}data-guest="1"{{end}}>
+        {{if $.User}}
+          <input id="chat-input" name="body" autocomplete="off" maxlength="500" placeholder="send a message">
+          <button type="submit">send</button>
+        {{else}}
+          <input disabled placeholder="log in to chat">
+          <a class="btn-secondary" href="/login">log in</a>
+        {{end}}
+      </form>
+    </aside>
+  </div>
 </section>
+
+<script>
+  (function () {
+    var log = document.getElementById('chat-log');
+    var form = document.getElementById('chat-form');
+    var input = document.getElementById('chat-input');
+    var viewerCount = document.getElementById('viewer-count');
+    var isGuest = form && form.dataset.guest === '1';
+
+    function escape(s) {
+      var d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    function render(msg) {
+      if (msg.type === 'viewers') {
+        viewerCount.textContent = 'viewers: ' + (msg.count || 0);
+        return;
+      }
+      var li = document.createElement('li');
+      li.className = 'chat-msg chat-' + (msg.type || 'message');
+      var when = msg.at ? new Date(msg.at) : new Date();
+      var hh = String(when.getHours()).padStart(2, '0');
+      var mm = String(when.getMinutes()).padStart(2, '0');
+      var time = '<span class="chat-time">' + hh + ':' + mm + '</span>';
+      if (msg.type === 'system') {
+        li.innerHTML = time + ' <em>' + escape(msg.body) + '</em>';
+      } else if (msg.type === 'error') {
+        li.innerHTML = time + ' <span class="error-inline">' + escape(msg.body) + '</span>';
+      } else {
+        li.innerHTML = time + ' <strong>' + escape(msg.user || '?') + ':</strong> ' + escape(msg.body);
+      }
+      log.appendChild(li);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    var proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    var ws = new WebSocket(proto + '://' + location.host + '/ws/chat/{{.ChannelName}}');
+
+    ws.onmessage = function (ev) {
+      try {
+        render(JSON.parse(ev.data));
+      } catch (e) {}
+    };
+    ws.onclose = function () {
+      render({ type: 'system', body: 'disconnected' });
+    };
+
+    if (!isGuest && form) {
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var body = (input.value || '').trim();
+        if (!body || ws.readyState !== WebSocket.OPEN) return;
+        ws.send(JSON.stringify({ body: body }));
+        input.value = '';
+      });
+    }
+  })();
+</script>
 {{end}}
 {{end}}
