@@ -20,7 +20,12 @@
       {{range .Live}}
         <li class="card">
           <a href="/c/{{.ChannelName}}">
-            <div class="card-thumb"><span class="live-badge">LIVE</span></div>
+            <div class="card-thumb">
+              <img src="/hls/{{.ChannelName}}/thumb.jpg" alt="" loading="lazy"
+                   onerror="this.style.display='none'">
+              <span class="live-badge">LIVE</span>
+              <span class="viewer-badge">{{.Viewers}} viewers</span>
+            </div>
             <div class="card-body">
               <div class="card-channel">{{.ChannelName}}</div>
               <div class="card-title muted">{{if .Title}}{{.Title}}{{else}}(no title){{end}}</div>

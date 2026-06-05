@@ -98,3 +98,15 @@ func (m *manager) shutdownAll() {
 func (m *manager) allowUser(userID int64) bool {
 	return m.limits.allow(userID)
 }
+
+// viewerCount returns the cached unique-viewer count from the Room with
+// the given name, or 0 if no room exists for that channel.
+func (m *manager) viewerCount(channelName string) int {
+	m.mu.Lock()
+	e, ok := m.rooms[channelName]
+	m.mu.Unlock()
+	if !ok {
+		return 0
+	}
+	return int(e.room.viewerCount.Load())
+}

@@ -3,6 +3,7 @@
 <section class="watch">
   <div class="watch-grid">
     <div class="watch-main">
+      <button type="button" id="chat-show" class="chat-show" title="show chat" aria-label="show chat">chat</button>
       <h1>{{.ChannelName}}</h1>
       {{if .Title}}<p class="muted">{{.Title}}</p>{{end}}
 
@@ -136,6 +137,7 @@
       <header class="chat-header">
         <span>chat</span>
         <span id="viewer-count" class="viewer-count">viewers: 0</span>
+        <button type="button" id="chat-hide" class="chat-hide" title="hide chat" aria-label="hide chat">&times;</button>
       </header>
       <ul id="chat-log" class="chat-log"></ul>
       <form id="chat-form" class="chat-form" {{if not $.User}}data-guest="1"{{end}}>
@@ -158,6 +160,24 @@
     var input = document.getElementById('chat-input');
     var viewerCount = document.getElementById('viewer-count');
     var isGuest = form && form.dataset.guest === '1';
+
+    // Chat hide/show toggle. Persists in localStorage so the choice
+    // sticks across reloads, page navigations, and entering/leaving
+    // fullscreen. Works the same way in both modes.
+    var grid = document.querySelector('.watch-grid');
+    var hideBtn = document.getElementById('chat-hide');
+    var showBtn = document.getElementById('chat-show');
+    function setChatHidden(hidden) {
+      grid.classList.toggle('chat-hidden', hidden);
+      try { localStorage.setItem('chtiwt:chat-hidden', hidden ? '1' : '0'); } catch (e) {}
+    }
+    if (hideBtn) hideBtn.addEventListener('click', function () { setChatHidden(true); });
+    if (showBtn) showBtn.addEventListener('click', function () { setChatHidden(false); });
+    try {
+      if (localStorage.getItem('chtiwt:chat-hidden') === '1') {
+        grid.classList.add('chat-hidden');
+      }
+    } catch (e) {}
 
     function escape(s) {
       var d = document.createElement('div');

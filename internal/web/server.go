@@ -18,8 +18,12 @@ type liveDirectory interface {
 // chatGateway is the narrow view of the chat package that web depends on.
 // username/userID are zero for unauthenticated viewers (read-only chat);
 // anonKey is a long-lived per-browser ID so guest viewers dedupe across tabs.
+//
+// ViewerCount is read by the directory page to surface per-channel
+// popularity on the cards. Returns 0 if no chat room exists yet.
 type chatGateway interface {
 	ServeWS(w http.ResponseWriter, r *http.Request, channelName, username string, userID int64, anonKey string)
+	ViewerCount(channelName string) int
 }
 
 type Server struct {

@@ -2,6 +2,7 @@ package chat
 
 import (
 	"log/slog"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -38,6 +39,12 @@ type Room struct {
 	send  chan inbound
 	stop  chan struct{}
 
+	// viewerCount is a read-side cache of len(viewerCounts) inside the
+	// run() loop. The actor writes it under its own (implicit) ownership;
+	// outside callers (the directory page) read it lock-free via
+	// atomic.LoadInt32. Source of truth still lives in the actor's map.
+	viewerCount atomic.Int32
+
 	// onEmpty fires when the last client leaves; the manager uses it to
 	// schedule reaping.
 	onEmpty func()
@@ -73,6 +80,10 @@ func (r *Room) run() {
 
 	viewerMessage := func() Message {
 		return Message{Type: KindViewers, Count: len(viewerCounts)}
+	}
+
+	publishCount := func() {
+		r.viewerCount.Store(int32(len(viewerCounts)))
 	}
 
 	appendHistory := func(m Message) {
@@ -171,6 +182,7 @@ func (r *Room) run() {
 			}
 
 			if viewerChanged {
+				publishCount()
 				dispatch(viewerMessage())
 			} else {
 				// Same-human reconnect: tell only the new tab the current count.
@@ -190,6 +202,7 @@ func (r *Room) run() {
 				})
 			}
 			if viewerChanged {
+				publishCount()
 				dispatch(viewerMessage())
 			}
 			if len(clients) == 0 && r.onEmpty != nil {

@@ -37,11 +37,20 @@ func startFFmpeg(ctx context.Context, opts ffmpegOpts) (*ffmpegProc, error) {
 	outDir := filepath.Join(opts.stateDir, opts.channelName)
 	segPattern := filepath.Join(outDir, "seg_%05d.ts")
 	playlist := filepath.Join(outDir, "index.m3u8")
+	thumb := filepath.Join(outDir, "thumb.jpg")
 
+	// One ffmpeg invocation, two outputs:
+	//   1. HLS playlist + .ts segments (copy, no transcode)
+	//   2. A 320x180 JPEG snapshot, overwritten every 10s, used as the
+	//      thumbnail on the directory cards. `-update 1` tells the image
+	//      muxer to atomically replace the same file instead of producing
+	//      thumb_001.jpg, thumb_002.jpg, ...
 	args := []string{
 		"-hide_banner",
 		"-loglevel", "warning",
 		"-f", "flv", "-i", "pipe:0",
+		// HLS output (the live stream).
+		"-map", "0",
 		"-c:v", "copy", "-c:a", "copy",
 		"-f", "hls",
 		"-hls_time", fmt.Sprint(opts.segDuration),
@@ -49,6 +58,13 @@ func startFFmpeg(ctx context.Context, opts ffmpegOpts) (*ffmpegProc, error) {
 		"-hls_flags", "delete_segments+independent_segments",
 		"-hls_segment_filename", segPattern,
 		playlist,
+		// Thumbnail output.
+		"-map", "0:v:0",
+		"-vf", "fps=1/10,scale=320:180:force_original_aspect_ratio=decrease,pad=320:180:(ow-iw)/2:(oh-ih)/2:black",
+		"-update", "1",
+		"-y",
+		"-f", "image2",
+		thumb,
 	}
 
 	cmd := exec.CommandContext(ctx, opts.binPath, args...)

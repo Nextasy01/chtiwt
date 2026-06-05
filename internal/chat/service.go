@@ -28,3 +28,10 @@ func NewService(opts Options) *Service {
 func (s *Service) Shutdown() {
 	s.manager.shutdownAll()
 }
+
+// ViewerCount returns the number of unique viewers currently in the room
+// for channelName, or 0 if no room exists. Lock-free read of an atomic
+// cached value the Room maintains.
+func (s *Service) ViewerCount(channelName string) int {
+	return s.manager.viewerCount(channelName)
+}

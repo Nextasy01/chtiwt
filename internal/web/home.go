@@ -9,6 +9,7 @@ type homeData struct {
 type liveCard struct {
 	ChannelName string
 	Title       string
+	Viewers     int
 }
 
 func (s *Server) home(w http.ResponseWriter, r *http.Request) {
@@ -23,7 +24,11 @@ func (s *Server) home(w http.ResponseWriter, r *http.Request) {
 	live := s.live.ListLive()
 	cards := make([]liveCard, 0, len(live))
 	for _, c := range live {
-		cards = append(cards, liveCard{ChannelName: c.ChannelName, Title: c.Title})
+		cards = append(cards, liveCard{
+			ChannelName: c.ChannelName,
+			Title:       c.Title,
+			Viewers:     s.chat.ViewerCount(c.ChannelName),
+		})
 	}
 	_ = s.tmpl.Render(w, r, "home", homeData{Live: cards})
 }
