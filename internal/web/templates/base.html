@@ -39,6 +39,11 @@
     .topbar nav { display: flex; align-items: center; gap: 1rem; }
     .topbar nav .me { color: var(--muted); }
     main { max-width: 720px; margin: 0 auto; padding: 2rem 1.25rem; }
+    /* The watch page is the only one that wants a wide layout — the
+       video player needs the room. :has() lets us bump the cap only
+       when the page actually contains a .watch section, leaving the
+       forms / dashboard / home grid centered at the narrower default. */
+    main:has(.watch) { max-width: min(96vw, 1400px); }
     h1 { margin-top: 0; }
     h2 { margin-top: 2rem; }
     .muted { color: var(--muted); }
@@ -198,9 +203,12 @@
     }
     .watch-grid {
       display: grid;
-      grid-template-columns: 1fr 320px;
+      grid-template-columns: 1fr 340px;
       gap: 1rem;
-      align-items: start;
+      /* stretch: the chat sidebar matches the player's height instead
+         of carrying its own. Player height comes from the 16:9 wrapper,
+         which fills the 1fr column. */
+      align-items: stretch;
     }
     @media (max-width: 800px) {
       .watch-grid { grid-template-columns: 1fr; }
@@ -241,11 +249,13 @@
     .chat-pane {
       display: flex;
       flex-direction: column;
-      height: 540px;
+      /* No fixed height in desktop layout — the grid stretches us to
+         match the watch-main column (h1 + title + 16:9 player). */
       background: var(--panel);
       border: 1px solid var(--border);
       border-radius: 6px;
       overflow: hidden;
+      min-height: 0;
     }
     .chat-header {
       display: flex;
